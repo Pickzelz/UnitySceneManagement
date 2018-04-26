@@ -71,6 +71,10 @@ public class FISceneView : TreeView{
         base.DoubleClickedItem(id);
 
         SaveItem item = allSaveitem.Find(x => x.item.id == id);
+
+        EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+        
         EditorSceneManager.OpenScene(item.path);
+        
     }
 }
