@@ -8,7 +8,7 @@ using UnityEditor;
 
 public class FISceneView : TreeView{
 
-    List<SaveItem> allSaveitem;
+    public List<SaveItem> allSaveitem;
 
     public class SaveItem
     {
@@ -19,6 +19,11 @@ public class FISceneView : TreeView{
 
     public FISceneView(TreeViewState treeViewState)
         : base(treeViewState)
+    {
+        Reload();
+    }
+
+    public void ReloadData()
     {
         Reload();
     }

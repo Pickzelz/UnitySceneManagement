@@ -8,6 +8,7 @@ public class FISceneManagementWindow : EditorWindow {
 
     [SerializeField] TreeViewState m_TreeViewState;
     FISceneView m_SimpleTreeView;
+    int rows = 0;
 
     private void OnEnable()
     {
@@ -15,11 +16,16 @@ public class FISceneManagementWindow : EditorWindow {
             m_TreeViewState = new TreeViewState();
 
         m_SimpleTreeView = new FISceneView(m_TreeViewState);
+        rows = EditorBuildSettings.scenes.Length;
     }
 
     void OnGUI()
     {
-
+        if (rows != EditorBuildSettings.scenes.Length)
+        {
+            m_SimpleTreeView.Reload();
+            rows = EditorBuildSettings.scenes.Length;
+        }
         m_SimpleTreeView.OnGUI(new Rect(0, 0, position.width, position.height));
     }
 
@@ -32,4 +38,5 @@ public class FISceneManagementWindow : EditorWindow {
         window.titleContent = new GUIContent("Scenes");
         window.Show();
     }
+
 }
