@@ -6,7 +6,7 @@ using UnityEditor.SceneManagement;
 using UnityEditor;
 
 
-public class SceneView : TreeView{
+public class FISceneView : TreeView{
 
     List<SaveItem> allSaveitem;
 
@@ -17,7 +17,7 @@ public class SceneView : TreeView{
     }
 
 
-    public SceneView(TreeViewState treeViewState)
+    public FISceneView(TreeViewState treeViewState)
         : base(treeViewState)
     {
         Reload();

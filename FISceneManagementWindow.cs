@@ -4,17 +4,17 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 
-public class SceneManagementWindow : EditorWindow {
+public class FISceneManagementWindow : EditorWindow {
 
     [SerializeField] TreeViewState m_TreeViewState;
-    SceneView m_SimpleTreeView;
+    FISceneView m_SimpleTreeView;
 
     private void OnEnable()
     {
         if (m_TreeViewState == null)
             m_TreeViewState = new TreeViewState();
 
-        m_SimpleTreeView = new SceneView(m_TreeViewState);
+        m_SimpleTreeView = new FISceneView(m_TreeViewState);
     }
 
     void OnGUI()
@@ -28,7 +28,7 @@ public class SceneManagementWindow : EditorWindow {
     static void ShowWindow()
     {
         // Get existing open window or if none, make a new one:
-        var window = GetWindow<SceneManagementWindow>();
+        var window = GetWindow<FISceneManagementWindow>();
         window.titleContent = new GUIContent("Scenes");
         window.Show();
     }
