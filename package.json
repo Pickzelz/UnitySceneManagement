@@ -1,0 +1,11 @@
+{
+  "name": "com.pickzelz.scenemanagement",
+  "version": "1.0.0",
+  "displayName": "Scene Management Tools",
+  "description": "Tools to manage Unity scenes easily.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Pickzelz",
+    "url": "https://github.com/Pickzelz"
+  }
+}
