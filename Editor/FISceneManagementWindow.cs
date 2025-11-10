@@ -16,6 +16,10 @@ public class FISceneManagementWindow : EditorWindow {
     List<EditorBuildSettingsScene> m_ScenesList;
     [SerializeField] bool m_AutoSave = true;
     bool m_IsDirty = false;
+    // Play/restore state
+    List<string> m_PreviousOpenScenePaths;
+    string m_PreviousActiveScenePath;
+    bool m_ShouldRestoreScenes = false;
 
     private void OnEnable()
     {
@@ -31,7 +35,9 @@ public class FISceneManagementWindow : EditorWindow {
 
         m_ReorderableList.drawHeaderCallback = (Rect rect) =>
         {
-            EditorGUI.LabelField(rect, "Scenes");
+            // Simple header label only; Play First button is drawn above the list in OnGUI
+            var labelRect = new Rect(rect.x + 2f, rect.y, rect.width, rect.height);
+            EditorGUI.LabelField(labelRect, "Scenes");
         };
 
     m_ReorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
@@ -60,6 +66,12 @@ public class FISceneManagementWindow : EditorWindow {
                 Event.current.Use();
             }
 
+            var playRect = new Rect(rect.x + rect.width - 180f, rect.y + 2, 56f, EditorGUIUtility.singleLineHeight);
+            if (GUI.Button(playRect, "Play", EditorStyles.miniButton))
+            {
+                PlayScenePath(scene.path);
+            }
+
             var openRect = new Rect(rect.x + rect.width - 120f, rect.y + 2, 56f, EditorGUIUtility.singleLineHeight);
             if (GUI.Button(openRect, "Open", EditorStyles.miniButton))
             {
@@ -78,6 +90,53 @@ public class FISceneManagementWindow : EditorWindow {
         m_ReorderableList.onAddCallback = (ReorderableList list) => { AddScene(); };
         m_ReorderableList.onRemoveCallback = (ReorderableList list) => { OnListChanged(); };
         m_ReorderableList.onReorderCallback = (ReorderableList list) => { OnListChanged(); };
+
+        // Subscribe to play mode state changes to restore scenes after play
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private void OnDisable()
+    {
+        EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+    }
+
+    private void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        // When returning to Edit mode, restore previous open scenes if requested
+        if (state == PlayModeStateChange.EnteredEditMode && m_ShouldRestoreScenes)
+        {
+            m_ShouldRestoreScenes = false;
+            if (m_PreviousOpenScenePaths != null && m_PreviousOpenScenePaths.Count > 0)
+            {
+                try
+                {
+                    // Open first as single, others additive
+                    for (int i = 0; i < m_PreviousOpenScenePaths.Count; i++)
+                    {
+                        var p = m_PreviousOpenScenePaths[i];
+                        if (i == 0)
+                            EditorSceneManager.OpenScene(p, OpenSceneMode.Single);
+                        else
+                            EditorSceneManager.OpenScene(p, OpenSceneMode.Additive);
+                    }
+
+                    // Restore active scene
+                    if (!string.IsNullOrEmpty(m_PreviousActiveScenePath))
+                    {
+                        var sc = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(m_PreviousActiveScenePath);
+                        if (sc.IsValid())
+                            EditorSceneManager.SetActiveScene(sc);
+                    }
+                }
+                catch (System.Exception)
+                {
+                    // ignore
+                }
+            }
+
+            m_PreviousOpenScenePaths = null;
+            m_PreviousActiveScenePath = null;
+        }
     }
 
     void OnGUI()
@@ -94,6 +153,8 @@ public class FISceneManagementWindow : EditorWindow {
         {
             AddScene();
         }
+
+        // Play First moved to the ReorderableList header
 
         GUILayout.Space(6);
         // Auto Save checkbox (visible)
@@ -124,6 +185,62 @@ public class FISceneManagementWindow : EditorWindow {
         if (m_ReorderableList != null)
         {
             GUILayout.Space(4);
+
+            // Draw centered Play/Pause/Stop controls above the scenes list
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+
+            // Use a single primary Play/Stop button + a separate Pause button
+            var btnStyle = EditorStyles.toolbarButton; // boxed toolbar-style button
+            string playGlyph = "▶"; // play triangle
+            string pauseGlyph = "⏸"; // pause glyph
+            string stopGlyph = "⏹"; // stop glyph
+
+            // Glyph fallback for environments where glyphs may not render; simple ASCII fallback
+            if (string.IsNullOrEmpty(System.Globalization.CharUnicodeInfo.GetUnicodeCategory(playGlyph[0]).ToString())) { playGlyph = ">"; }
+
+            var playContent = new GUIContent(playGlyph, "Play First");
+            var pauseContent = new GUIContent(pauseGlyph, "Pause/Resume");
+            var stopContent = new GUIContent(stopGlyph, "Stop");
+
+            // Primary unified Play/Stop button
+            var primaryContent = EditorApplication.isPlaying ? stopContent : playContent;
+            if (GUILayout.Button(primaryContent, btnStyle, GUILayout.Width(36), GUILayout.Height(20)))
+            {
+                if (EditorApplication.isPlaying)
+                {
+                    // Stop play mode
+                    EditorApplication.isPlaying = false;
+                }
+                else
+                {
+                    if (m_ScenesList == null || m_ScenesList.Count == 0)
+                    {
+                        EditorUtility.DisplayDialog("Play First", "No scenes in Build Settings to play.", "OK");
+                    }
+                    else
+                    {
+                        var first = m_ScenesList[0];
+                        PlayScenePath(first.path);
+                    }
+                }
+            }
+
+            GUILayout.Space(8);
+
+            // Pause button (disabled when not playing)
+            EditorGUI.BeginDisabledGroup(!EditorApplication.isPlaying);
+            if (GUILayout.Button(pauseContent, btnStyle, GUILayout.Width(36), GUILayout.Height(20)))
+            {
+                EditorApplication.isPaused = !EditorApplication.isPaused;
+            }
+            EditorGUI.EndDisabledGroup();
+
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Space(2);
+
             m_ReorderableList.DoLayoutList();
 
             // Handle drag-and-drop from Project window to add scenes
@@ -234,6 +351,35 @@ public class FISceneManagementWindow : EditorWindow {
         if (m_SimpleTreeView != null)
             m_SimpleTreeView.Reload();
         m_IsDirty = false;
+    }
+
+    private void PlayScenePath(string path)
+    {
+        // Save current open scenes and active scene
+        var openPaths = new List<string>();
+        for (int i = 0; i < EditorSceneManager.sceneCount; i++)
+        {
+            var s = EditorSceneManager.GetSceneAt(i);
+            if (!string.IsNullOrEmpty(s.path))
+                openPaths.Add(s.path);
+        }
+
+        var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        m_PreviousActiveScenePath = active.IsValid() ? active.path : null;
+        m_PreviousOpenScenePaths = openPaths;
+
+        // Ask to save modified scenes before switching
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            return;
+
+        // Open the requested scene (single)
+        EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+
+        // Mark that we should restore previous scenes when exiting Play Mode
+        m_ShouldRestoreScenes = true;
+
+        // Enter Play Mode
+        EditorApplication.isPlaying = true;
     }
 
     private void OnListChanged()
