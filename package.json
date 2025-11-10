@@ -1,6 +1,6 @@
 {
   "name": "com.pickzelz.scenemanagement",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "displayName": "Scene Management Tools",
   "description": "Tools to manage Unity scenes easily.",
   "unity": "2021.3",
